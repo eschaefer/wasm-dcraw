@@ -1,0 +1,52 @@
+<!doctype html>
+<body>
+  <h1>Downloading...</h1>
+<script>
+  let el = document.querySelector('h1');
+  
+  var Module = {
+    onRuntimeInitialized: async () => {
+      const image = await fetch("E1DXLL0000506.CR2").then(r =>
+        r.arrayBuffer()
+      );
+
+      // Cast ArrayBuffer to Uint8Array
+      const clampedBuffer = new Uint8Array(image);
+
+      // Create a workspace in MEMFS
+      FS.mkdir("/workspace");
+      FS.chdir("/workspace");  
+      FS.writeFile("raw_file_buffer", clampedBuffer);
+      
+      el.innerText = "Processing...";
+
+      // The buffer is stored in FS. Pass a reference to its name.
+      Module.callMain(["-e", "raw_file_buffer"]);
+
+      const extracted = FS.readFile("raw_file_buffer.thumb.jpg", {encoding: "binary"});
+
+      // Cleanup
+      if (extracted && clampedBuffer) {
+        ["raw_file_buffer", "raw_file_buffer.thumb.jpg"].forEach(item => {
+          FS.unlink(item);
+        })
+      }
+      FS.chdir("/");
+      FS.rmdir("/workspace");
+
+      // Now use `extracted` to create an image Blob to be used in the browser
+      const blob = new Blob([extracted], {type: "image/jpeg"});
+      const imageUrl = URL.createObjectURL(blob);
+      const img = document.createElement("img");
+      img.src = imageUrl;
+      img.width = 600;
+      document.body.appendChild(img);
+
+      el.innerText = "Thumbnail extracted!";
+    }
+  };
+</script>
+
+<script async src="dcraw.js"></script>
+</body>
+</html>
